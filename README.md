@@ -14,4 +14,5 @@ Once it runs creates:
 
  - MySQL 5.x.
  - Apache.
+ - mod_ssl
  - genkey (provided by crypto-utils on CentOS/Fedora)..
