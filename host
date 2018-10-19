@@ -1,0 +1,25 @@
+<VirtualHost *:PORT>
+	ServerName	HOST
+	Redirect        permanent / https://HOST/
+	#DocumentRoot	/var/www/html/HOST/html
+	#ErrorLog	/var/www/html/HOST/log/error.log
+	#CustomLog	/var/www/html/HOST/log/access.log combined
+</VirtualHost>
+<VirtualHost *:443>
+        DocumentRoot    /var/www/html/HOST/html
+        ServerName      HOST
+
+        ErrorLog        /var/www/html/HOST/log/error.ssl.log
+        CustomLog       /var/www/html/HOST/log/access.ssl.log combined
+
+
+        SSLEngine       on
+        SSLCertificateFile      /var/www/html/HOST/certificate/HOST.crt
+        SSLCertificateKeyFile   /var/www/html/HOST/certificate/HOST.key
+
+        <Directory /var/www/html/HOST/html>
+                AllowOverride   All
+        </Directory>
+
+        ServerSignature Off
+</VirtualHost>

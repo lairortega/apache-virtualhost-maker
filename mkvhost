@@ -1,0 +1,87 @@
+#!/bin/bash
+copy="\n#Created by mkvhost-v1.2.0\n"
+if [ "$1" != "" ] && [ "$2" != "" ] && [ "$3" != "" ]; then
+	#param list
+	# $1 Host name
+	# $2 port
+	# $3 dbUsername
+	hostName=$1
+	hostPort='80'
+	userName='usr_'
+	
+	if [ "$2" != "" ]; then
+		hostPort=$2
+	fi
+
+	if [ "$3" != "" ]; then
+		userName=$3
+	else
+		userName=$1
+	fi
+
+	vhost=`cat ./host`
+	mysql=`cat ./mysql`
+
+	vhost="${vhost//HOST/$hostName}"
+	vhost="${vhost/PORT/$hostPort}"
+
+	mySqlUser=${userName//./_}
+	mySqlDataBase=${hostName//./_}
+	mySqlPassword=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!#$=\?' | fold -w 12 | head -n 1)
+
+	mysql="${mysql//USERNAME/$mySqlUser}"
+	mysql="${mysql/PASSWORD/$mySqlPassword}"
+	mysql="${mysql/DATABASE/$mySqlDataBase}"
+    
+	echo "$mysql" > ./mysql.user.tmp
+
+	echo "creating vhost..."
+	printf "$copy" >> /etc/httpd/conf.d/$hostName.conf
+	printf "$vhost" >> /etc/httpd/conf.d/$hostName.conf
+
+	echo "Creating web alias..."
+	printf "$copy 127.0.0.1	$hostName" >> /etc/hosts
+
+	echo "Creating file structure..."
+	mkdir -p /var/www/html/$hostName/{html,log,certificate}
+    
+    #echo "$mysql" >> /var/www/html/$hostName/site.info
+
+	echo "<h1>$hostName</h1>" > /var/www/html/$hostName/html/index.html
+	echo "<?php phpinfo(); ?>" > /var/www/html/$hostName/html/info.php
+
+	echo "Setting up site..."	
+	
+	echo "Creating database $mySqlDataBase ..."
+	mysqladmin -u root create $mySqlDataBase
+
+	echo "Creating database user..."
+	mysql -u root < ./mysql.user.tmp
+	rm ./mysql.user.tmp
+
+	echo "Creating certificate..."
+	genkey $hostName --days 365
+	mv /etc/pki/tls/certs/$hostName.crt /var/www/html/$hostName/certificate/
+    mv /etc/pki/tls/private/$hostName.key /var/www/html/$hostName/certificate/
+
+    chown -R apache:jortega /var/www/html/$hostName/
+    chmod -R 775 /var/www/html/$hostName/
+	
+	echo "Restarting web service..."
+	systemctl restart httpd
+
+	echo "Successfuly finished."
+	printf "\tHost: https://${hostName}/\n"
+	printf "\tDatabase: ${mySqlDataBase}\n"
+	printf "\tUsername: ${mySqlUser}\n"
+	printf "\tPassword: ${mySqlPassword}\n"
+
+	printf "\tHost: https://${hostName}/\n" >> /var/www/html/$hostName/site.info
+	printf "\tDatabase: ${mySqlDataBase}\n" >> /var/www/html/$hostName/site.info
+	printf "\tUsername: ${mySqlUser}\n" >> /var/www/html/$hostName/site.info
+	printf "\tPassword: ${mySqlPassword}\n" >> /var/www/html/$hostName/site.info
+
+else
+	echo "Usage: mkvhost <string HostName> <int port> <string dbusername>";
+fi
+
